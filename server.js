@@ -3,6 +3,7 @@ import { readFile, stat } from "node:fs/promises";
 import { extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import pg from "pg";
+import QRCode from "qrcode";
 
 const root = fileURLToPath(new URL(".", import.meta.url));
 const port = Number(process.env.PORT || 3000);
@@ -57,6 +58,18 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { ok: true });
     } catch (error) {
       return json(res, 400, { error: error.message || "No se pudo guardar" });
+    }
+  }
+
+  if (url.pathname === "/api/qr" && req.method === "GET") {
+    const data = url.searchParams.get("data");
+    if (!data) return json(res, 400, { error: "Falta dato para QR" });
+    try {
+      const svg = await QRCode.toString(data, { type: "svg", errorCorrectionLevel: "M", margin: 1, width: 240 });
+      res.writeHead(200, { "Content-Type": "image/svg+xml; charset=utf-8", "Cache-Control": "public, max-age=86400" });
+      return res.end(svg);
+    } catch {
+      return json(res, 500, { error: "No se pudo generar QR" });
     }
   }
 
